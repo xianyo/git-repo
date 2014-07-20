@@ -1010,6 +1010,76 @@ class Project(object):
                             message = msg)
 
 
+  def UploadNoReview(self, opt, args, branch=None):
+    """If not review server defined, uploads the named branch directly to git server.
+    """
+
+    if branch is None:
+      branch = self.CurrentBranch
+    if branch is None:
+      raise GitError('not currently on a branch')
+
+    branch = self.GetBranch(branch)
+
+    if not branch.LocalMerge:
+      raise GitError('branch %s does not track a remote' % branch.name)
+
+    dest_branch = branch.merge
+
+    if dest_branch.startswith(R_TAGS):
+      raise GitError('Can not push to TAGS (%s)! Run repo push with --new flag to create new feature branch.' % dest_branch)
+    if not dest_branch.startswith(R_HEADS):
+      dest_branch = R_HEADS + dest_branch
+
+    if not branch.remote.projectname:
+      branch.remote.projectname = self.name
+      branch.remote.Save()
+
+    # save git config branch.name.merge
+    if opt.x_cmd:
+      ref_spec = '%s' % opt.x_cmd
+    elif opt.new_branch:
+      branch.merge = opt.new_branch
+      branch.Save()
+      ref_spec = '%s:%s' % (R_HEADS + branch.name, opt.new_branch)
+    elif opt.del_branch: 
+      ref_spec = ':%s' % opt.del_branch
+    elif opt.push_tag:
+      ref_spec = '%s:%s' % (opt.push_tag,opt.push_tag)
+    elif opt.push_alltags:
+      ref_spec = '--tags'
+    else:
+      ref_spec = '%s:%s' % (R_HEADS + branch.name, dest_branch)
+    
+    cmd = ['push']
+    if opt.r_remote:
+      cmd.append(opt.r_remote)
+    else:
+      cmd.append(branch.remote.name)
+    cmd.append(ref_spec)
+    if GitCommand(self, cmd).Wait() != 0:
+      raise UploadError('Upload failed')
+
+    if branch.LocalMerge and branch.LocalMerge.startswith('refs/remotes'):
+      self.bare_git.UpdateRef(branch.LocalMerge,
+                              R_HEADS + branch.name)
+    
+  def tag(self, opt, args, tagname):
+     """create tags.
+     """
+     cmd = ['tag']
+     if opt.x_cmd:
+       cmd.append(opt.x_cmd)
+     elif opt.tag_commit:
+       cmd.append('-a')
+       cmd.append('%s' % tagname)
+       cmd.append('-m')
+       cmd.append('%s' % opt.tag_commit)
+     else:
+       cmd.append(tagname)
+    
+     return GitCommand(self, cmd).Wait() == 0
+                              
 ## Sync ##
 
   def _ExtractArchive(self, tarpath, path=None):
