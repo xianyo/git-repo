@@ -28,7 +28,7 @@ class Tag(Command):
   common = True
   helpSummary = "Create tag "
   helpUsage = """
-    %prog <tagname> [-m <msg>] [-x <cmd>] [-r <remote>] [<project>...]
+    %prog <tagname> [-m <msg>] [-r <remote>] [-x <cmd>] [-d <tag>] [<project>...]
 """
   helpDescription = """
 The '%prog' command is used to create the tag.
@@ -36,11 +36,14 @@ The '%prog' command is used to create the tag.
 
   def _Options(self, p):
     p.add_option('-m',
-                 dest='tag_commit', metavar='TAG',
+                 dest='tag_commit', metavar='MSG',
                  help='Tag commit.')
     p.add_option('-x', 
                  dest='x_cmd',  metavar='CMD',
-                 help='Execute the cmd.')   
+                 help='Execute the cmd.') 
+    p.add_option('-d', 
+                 dest='del_tag',  metavar='TAG',
+                 help='Delete the tag.')                 
     p.add_option('-r', 
                  dest='r_remote',  metavar='REMOTE',
                  help='Choice the remote group project.')                  
@@ -48,7 +51,7 @@ The '%prog' command is used to create the tag.
   def Execute(self, opt, args):
     
     tagname=''
-    if opt.x_cmd:
+    if opt.x_cmd or opt.del_tag:
       if opt.r_remote: 
         remoteaddr=opt.r_remote
         project_list = [] 
@@ -87,8 +90,10 @@ The '%prog' command is used to create the tag.
       
     print >>sys.stderr, ''
     
-   
-    if opt.x_cmd:
+    
+    if opt.del_tag:
+      sys.stdout.write('Delete the tag %s to projects (y/n)?' % opt.del_tag)
+    elif opt.x_cmd:
       sys.stdout.write('Execut the cmd git tag %s to projects (y/n)?' % opt.x_cmd)
     else:
       sys.stdout.write('Create the tag %s to projects (y/n)?' % tagname)
