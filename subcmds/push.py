@@ -23,25 +23,11 @@ from editor import Editor
 from error import UploadError, GitError
 from project import ReviewableBranch
 
-def _ConfirmManyUploads(multiple_branches=False):
-  if multiple_branches:
-    print "ATTENTION: One or more branches has an unusually high number of commits."
-  else:
-    print "ATTENTION: You are uploading an unusually high number of commits."
-  print "YOU PROBABLY DO NOT MEAN TO DO THIS. (Did you rebase across branches?)"
-  answer = raw_input("If you are sure you intend to do this, type 'yes': ").strip()
-  return answer == "yes"
 
 def _die(fmt, *args):
   msg = fmt % args
   print >>sys.stderr, 'error: %s' % msg
   sys.exit(1)
-
-def _SplitEmails(values):
-  result = []
-  for str in values:
-    result.extend([s.strip() for s in str.split(',')])
-  return result
 
 class Push(InteractiveCommand):
   common = True
@@ -80,34 +66,26 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
                  dest='x_cmd',  metavar='CMD',
                  help='Execute the cmd.')
                  
-  def _SingleBranch(self, args, opt, branch):
+  def _SingleBranch(self, opt, args, branch):
     project = branch.project
     name = branch.name
     remote = project.GetBranch(name).remote
 
-    key = 'review.%s.autoupload' % remote.review
-    answer = project.config.GetBoolean(key)
+    date = branch.date
+    list = branch.commits
+  
+    print 'Upload project %s:' % project.name
+    print '  branch %s (%2d commit%s, %s):' % (
+                name,
+                len(list),
+                len(list) != 1 and 's' or '',
+                date)
+    for commit in list:
+      print '         %s' % commit
 
-    if answer is False:
-      _die("upload blocked by %s = false" % key)
-
-    if answer is None:
-      date = branch.date
-      list = branch.commits
-      
-      
-      print 'Upload project %s/:' % project.relpath
-      print '  branch %s (%2d commit%s, %s):' % (
-                    name,
-                    len(list),
-                    len(list) != 1 and 's' or '',
-                    date)
-      for commit in list:
-        print '         %s' % commit
-
-      sys.stdout.write('Upload project %s (y/n)? ')
-      answer = sys.stdin.readline().strip()
-      answer = answer in ('y', 'Y', 'yes', '1', 'true', 't')
+    sys.stdout.write('Upload project %s (y/n)? ' % project.name)
+    answer = sys.stdin.readline().strip()
+    answer = answer in ('y', 'Y', 'yes', '1', 'true', 't')
 
     if answer:
       self._UploadAndReport(opt, args, [branch])
@@ -125,13 +103,12 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
     for project, avail in pending:
       script.append('#')
       script.append('# project %s/:' % project.relpath)
-      
+      print '# # # project  %s  ' % project.name
       b = {}
       for branch in avail:
         name = branch.name
         date = branch.date
         list = branch.commits
-
         
         if b:
           script.append('#')
@@ -143,13 +120,19 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
         for commit in list:
           script.append('#         %s' % commit)
         b[name] = branch
-      
-      print '# # # project  %s  ' % project.name
+        
+        print '# # # branch %s (%2d commit%s, %s):' % (
+                      name,
+                      len(list),
+                      len(list) != 1 and 's' or '',
+                      date)
+        for commit in list:
+          print '# # #          %s' % commit
+        print ''
       
       projects[project.relpath] = project
       branches[project.name] = b
-    script.append('')
-    
+    script.append('') 
     
   #  script = Editor.EditString("\n".join(script)).split("\n")
     
@@ -212,18 +195,13 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
       try:
         # Check if there are local changes that may have been forgotten
         if branch.project.HasChanges():
-            key = 'review.%s.autoupload' % branch.project.remote.review
-            answer = branch.project.config.GetBoolean(key)
-
-            # if they want to auto upload, let's not ask because it could be automated
-            if answer is None:
-                sys.stdout.write('Uncommitted changes in ' + branch.project.name + ' (did you forget to amend?). Continue uploading? (y/n) ')
-                a = sys.stdin.readline().strip().lower()
-                if a not in ('y', 'yes', 't', 'true', 'on'):
-                    print >>sys.stderr, "skipping upload"
-                    branch.uploaded = False
-                    branch.error = 'User aborted'
-                    continue
+          sys.stdout.write('Uncommitted changes in ' + branch.project.name + ' (did you forget to amend?). Continue uploading? (y/n) ')
+          a = sys.stdin.readline().strip().lower()
+          if a not in ('y', 'yes', 't', 'true', 'on'):
+            print >>sys.stderr, "skipping upload"
+            branch.uploaded = False
+            branch.error = 'User aborted'
+            continue
 
         branch.project.UploadNoReview(opt, args, branch=branch.name)
         branch.uploaded = True
@@ -289,7 +267,7 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
     # run git push
     if not pending:
       print >>sys.stdout, "no branches ready for upload"
-    #elif len(pending) == 1 and len(pending[0][1]) == 1:
-    #  self._SingleBranch(opt, args, pending[0][1][0])
+    elif len(pending) == 1 and len(pending[0][1]) == 1:
+      self._SingleBranch(opt, args, pending[0][1][0])
     else:
       self._MultipleBranches(opt, args, pending)

@@ -1035,10 +1035,7 @@ class Project(object):
       branch.remote.projectname = self.name
       branch.remote.Save()
 
-    # save git config branch.name.merge
-    if opt.x_cmd:
-      ref_spec = '%s' % opt.x_cmd
-    elif opt.new_branch:
+    if opt.new_branch:
       branch.merge = opt.new_branch
       branch.Save()
       ref_spec = '%s:%s' % (R_HEADS + branch.name, opt.new_branch)
@@ -1052,11 +1049,17 @@ class Project(object):
       ref_spec = '%s:%s' % (R_HEADS + branch.name, dest_branch)
     
     cmd = ['push']
-    if opt.r_remote:
-      cmd.append(opt.r_remote)
-    else:
-      cmd.append(branch.remote.name)
-    cmd.append(ref_spec)
+    
+    if opt.x_cmd:
+      for str in opt.x_cmd:
+        cmd.extend([s.strip() for s in str.split(' ')])
+    else:    
+      if opt.r_remote:
+        cmd.append(opt.r_remote)
+      else:
+        cmd.append(branch.remote.name)
+      cmd.append(ref_spec)
+    
     if GitCommand(self, cmd).Wait() != 0:
       raise UploadError('Upload failed')
 
@@ -1069,7 +1072,8 @@ class Project(object):
      """
      cmd = ['tag']
      if opt.x_cmd:
-       cmd.append(opt.x_cmd)
+      for str in opt.x_cmd:
+        cmd.extend([s.strip() for s in str.split(' ')])
      elif opt.tag_commit:
        cmd.append('-a')
        cmd.append('%s' % tagname)
