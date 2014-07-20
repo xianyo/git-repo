@@ -1051,8 +1051,7 @@ class Project(object):
     cmd = ['push']
     
     if opt.x_cmd:
-      for str in opt.x_cmd:
-        cmd.extend([s.strip() for s in str.split(' ')])
+      cmd.append(opt.x_cmd)
     else:    
       if opt.r_remote:
         cmd.append(opt.r_remote)
@@ -1072,8 +1071,7 @@ class Project(object):
      """
      cmd = ['tag']
      if opt.x_cmd:
-      for str in opt.x_cmd:
-        cmd.extend([s.strip() for s in str.split(' ')])
+      cmd.append(opt.x_cmd)
      elif opt.tag_commit:
        cmd.append('-a')
        cmd.append('%s' % tagname)

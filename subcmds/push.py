@@ -121,14 +121,16 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
           script.append('#         %s' % commit)
         b[name] = branch
         
-        print '# # # branch %s (%2d commit%s, %s):' % (
-                      name,
-                      len(list),
-                      len(list) != 1 and 's' or '',
-                      date)
-        for commit in list:
-          print '# # #          %s' % commit
-        print ''
+        if (not opt.del_branch and not opt.push_tag and not opt.push_alltags and
+          not opt.new_branch and not opt.x_cmd):
+          print '# # # branch %s (%2d commit%s, %s):' % (
+                          name,
+                          len(list),
+                          len(list) != 1 and 's' or '',
+                          date)
+          for commit in list:
+            print '# # #          %s' % commit
+          print ''
       
       projects[project.relpath] = project
       branches[project.name] = b
@@ -267,7 +269,7 @@ http://blog.sina.com.cn/s/blog_89f592f50100vpau.html
     # run git push
     if not pending:
       print >>sys.stdout, "no branches ready for upload"
-    elif len(pending) == 1 and len(pending[0][1]) == 1:
-      self._SingleBranch(opt, args, pending[0][1][0])
+    #elif len(pending) == 1 and len(pending[0][1]) == 1:
+    #  self._SingleBranch(opt, args, pending[0][1][0])
     else:
       self._MultipleBranches(opt, args, pending)
