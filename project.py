@@ -1072,7 +1072,7 @@ class Project(object):
      cmd = ['tag']
      if opt.x_cmd:
       cmd.append(opt.x_cmd)
-     elif if opt.del_tag:
+     elif opt.del_tag:
        cmd.append('-d')
        cmd.append('%s' % opt.del_tag)
      elif opt.tag_commit:
